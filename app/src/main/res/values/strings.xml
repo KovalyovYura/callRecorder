@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Call Recorder</string>
+    <string name="btn_go_to_records">Go To Records</string>
 </resources>
