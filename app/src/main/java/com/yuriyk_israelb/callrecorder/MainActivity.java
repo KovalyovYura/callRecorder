@@ -1,6 +1,13 @@
 package com.yuriyk_israelb.callrecorder;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
+
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -29,40 +36,45 @@ import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
     public static final String DATABASE_NAME = "contacts.db";
-    private SQLiteDatabase contactsDB = null;
+    public static SQLiteDatabase contactsDB = null;
     private ListView lvContactsList;
     private SearchView searchView;
     private ArrayList<Contact> contactsList;
     private ContactAdapter contactAdapter;
-
+    private Button btn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         lvContactsList = findViewById(R.id.lvContactsListID);
         searchView = findViewById(R.id.searchViewID);
         contactsList = new ArrayList<>();
 
-
-
         // Open Database or create if isn't exist and create contact table
-        try{
+        try
+        {
             contactsDB = openOrCreateDatabase(DATABASE_NAME, MODE_PRIVATE, null);
             String sql = "CREATE TABLE IF NOT EXISTS records(name VARCHAR, phone_number VARCHAR, record_length VARCHAR" +
-                                                                ", in_out boolean, record_ref VARCHAR, _id VARCHAR primary key);";
+                    ", in_out boolean, record_ref VARCHAR, _id VARCHAR primary key);";
             contactsDB.execSQL(sql);
-        }catch (Exception e){
+        }
+        catch (Exception e)
+        {
             Toast.makeText(this, "DataBase ERROR", Toast.LENGTH_LONG).show();
         }
 
-        String sql = "INSERT INTO records(name, phone_number, record_length, in_out, record_ref, _id) " +
-                "VALUES('yura', '0543980555', '12:51', 1, 'blublu', '12.12.12 22:22')," +
-                "('israel', '0543980555', '12:51', 1, 'blublu', '16.12.12 22:22')," +
-                "('sasha', '0543980555', '12:51', 1, 'blublu', '15.12.12 22:22')," +
+        String sql = "REPLACE INTO records(name, phone_number, record_length, in_out, record_ref, _id) " +
+                "VALUES('yura', '0543980555', '12:51', 1, 'ahoti', '12.12.12 22:22')," +
+                "('israel', '0543980555', '12:51', 1, 'all_or_nothing', '16.12.12 22:22')," +
+                "('sasha', '0543980555', '12:51', 1, '" +
+                "', '15.12.12 22:22')," +
                 "('shmuel', '0543980555', '12:51', 1, 'blublu', '14.12.12 22:22')," +
                 "('eli', '0543980555', '12:51', 1, 'blublu', '13.12.12 22:22');";
+
         contactsDB.execSQL(sql);
+
         Cursor c = contactsDB.rawQuery("SELECT * FROM records;", null);
 
         if(c.moveToFirst()) {
@@ -74,10 +86,6 @@ public class MainActivity extends AppCompatActivity {
             }while (c.moveToNext());
         }
 
-
-
-
-
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.READ_CONTACTS)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -86,7 +94,8 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.READ_CONTACTS},
                     111);
-        } else {
+        }
+        else {
             initContactList();
             contactAdapter = new ContactAdapter(this, contactsList);
             lvContactsList.setAdapter(contactAdapter);
@@ -103,16 +112,32 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 @Override
-                public boolean onQueryTextChange(String newText) {
+                    public boolean onQueryTextChange(String newText) {
                     //contactAdapter.getFilter().filter(newText);
                     return false;
                 }
             });
-
         }
 
-
+        btn = findViewById(R.id.btnGoToRecordsID);
+        btn.setOnClickListener(new Listener());
     }
+
+    public class Listener implements View.OnClickListener
+    {
+        @Override
+        public void onClick(View v)
+        {
+            open_game_activity();
+        }
+    }
+
+    public void open_game_activity()
+    {
+        Intent intent = new Intent(this, RecordsActivity.class);
+        startActivity(intent);
+    }
+
 
     @Override
     protected void onResume() {
