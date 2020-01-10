@@ -1,4 +1,9 @@
 <resources>
     <string name="app_name">Call Recorder</string>
     <string name="btn_go_to_records">Go To Records</string>
+    <string name="search_hint">Enter name for search</string>
+    <array name="contacts_setting">
+        <item>Enable Recording</item>
+        <item>Enable Blocking</item>
+    </array>
 </resources>

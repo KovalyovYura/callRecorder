@@ -20,11 +20,14 @@
             android:layout_weight="1"
             android:text="@string/btn_go_to_records" />
 
-        <SearchView
-            android:id="@+id/searchViewID"
+        <EditText
+            android:id="@+id/edtSearchID"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_weight="1" />
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ems="10"
+            android:hint="@string/search_hint"
+            android:inputType="textPersonName" />
 
     </LinearLayout>
 

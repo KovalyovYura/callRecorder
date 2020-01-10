@@ -4,8 +4,11 @@ import androidx.appcompat.app.AppCompatActivity;
 
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.view.KeyEvent;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.Button;
 
 import androidx.core.app.ActivityCompat;
@@ -14,34 +17,34 @@ import androidx.core.content.ContextCompat;
 import android.Manifest;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
-import android.content.ContentUris;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
-import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.SearchView;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import java.util.ArrayList;
 
 
 public class MainActivity extends AppCompatActivity {
     public static final String DATABASE_NAME = "contacts.db";
     public static SQLiteDatabase contactsDB = null;
     private ListView lvContactsList;
-    private SearchView searchView;
-    private ArrayList<Contact> contactsList;
+    private EditText edtSearch;
+    private Cursor cursor;
     private ContactAdapter contactAdapter;
     private Button btn;
+    private SharedPreferences sp_records;
+    private SharedPreferences sp_blocks;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,8 +52,11 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         lvContactsList = findViewById(R.id.lvContactsListID);
-        searchView = findViewById(R.id.searchViewID);
-        contactsList = new ArrayList<>();
+        edtSearch = findViewById(R.id.edtSearchID);
+        btn = findViewById(R.id.btnGoToRecordsID);
+        sp_records = getSharedPreferences("Records", MODE_PRIVATE);
+        sp_blocks = getSharedPreferences("Blocks", MODE_PRIVATE);
+
 
         // Open Database or create if isn't exist and create contact table
         try
@@ -75,16 +81,6 @@ public class MainActivity extends AppCompatActivity {
 
         contactsDB.execSQL(sql);
 
-        Cursor c = contactsDB.rawQuery("SELECT * FROM records;", null);
-
-        if(c.moveToFirst()) {
-            do {
-                String id = c.getString(c.getColumnIndexOrThrow("_id"));
-                String name = c.getString(c.getColumnIndexOrThrow( "name"));
-                Log.d("debug", name +" "+ id);
-
-            }while (c.moveToNext());
-        }
 
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.READ_CONTACTS)
@@ -96,30 +92,35 @@ public class MainActivity extends AppCompatActivity {
                     111);
         }
         else {
-            initContactList();
-            contactAdapter = new ContactAdapter(this, contactsList);
+            cursor = getCursor();
+            contactAdapter = new ContactAdapter(this, cursor);
             lvContactsList.setAdapter(contactAdapter);
 
-            searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            lvContactsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
-                public boolean onQueryTextSubmit(String query) {
-                    if(contactsList.contains(query)){
-                        contactAdapter.getFilter().filter(query);
-                    }else{
-                        Toast.makeText(MainActivity.this, "No Match found",Toast.LENGTH_LONG).show();
-                    }
-                    return false;
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                    LinearLayout linearLayoutParent = (LinearLayout) view;
+                    TextView txtName = (TextView) linearLayoutParent.getChildAt(1);
+                    String contactName = txtName.getText().toString();
+                    showContactSettingDialog(contactName);
                 }
+            });
 
+            // search contacts if when enter was pressed
+            edtSearch.setOnKeyListener(new View.OnKeyListener() {
                 @Override
-                    public boolean onQueryTextChange(String newText) {
-                    //contactAdapter.getFilter().filter(newText);
+                public boolean onKey(View v, int keyCode, KeyEvent event) {
+                    if(event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_ENTER){
+                        cursor = getSearchCursor(edtSearch.getText().toString());
+                        contactAdapter.changeCursor(cursor);
+                        return true;
+                    }
                     return false;
                 }
             });
         }
 
-        btn = findViewById(R.id.btnGoToRecordsID);
+
         btn.setOnClickListener(new Listener());
     }
 
@@ -138,35 +139,31 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
+    public Cursor getCursor(){
+        ContentResolver resolver = getContentResolver();
+        Uri contactsTableUri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI;
+        return resolver.query(contactsTableUri, null, null, null, null);
+    }
+
+    public Cursor getSearchCursor(String query){
+        Log.d("debug", "i'm in getSearch");
+        ContentResolver resolver = getContentResolver();
+        Uri contactsTableUri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI;
+        String selection = ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ?";
+        String[] selectionArgs = {"%"+query+"%"};
+        return resolver.query(contactsTableUri, null, selection, selectionArgs, null);
+    }
+
+
 
     @Override
     protected void onResume() {
         super.onResume();
-        initContactList();
+//        cursor = getCursor();
+//        contactAdapter.changeCursor(cursor);
     }
 
-    public void initContactList() {
-        contactsList.clear();
-        ContentResolver resolver = getContentResolver();
-        Uri contactsTableUri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI;
-        Cursor cursor = resolver.query(contactsTableUri, null, null, null, null);
 
-        if (cursor != null) {
-            if (cursor.moveToNext()) {
-                // there is at least ONE contact
-                do {
-                    String name = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));
-                    int photoResourceId = cursor.getInt(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_FILE_ID));
-                    Uri displayPhotoUri = ContentUris.withAppendedId(ContactsContract.DisplayPhoto.CONTENT_URI, photoResourceId);
-                    Contact contact = new Contact(name, photoResourceId, displayPhotoUri);
-                    contactsList.add(contact);
-                }
-                while (cursor.moveToNext());
-
-                cursor.close();
-            }
-        }
-    }
 
 
 
@@ -234,42 +231,54 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // Check Runtime Permission for READ_CONTACTS
-    public boolean isPermissionToReadContactsOK()
-    {
-        // check if permission for READ_CONTACTS is granted ?
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED){
-            return true;
-        }
-        else
+    private void showContactSettingDialog(final String contactName){
+        AlertDialog.Builder alertDialog = new AlertDialog.Builder(this);
+        alertDialog.setTitle("Contact Settings");
+        alertDialog.setCancelable(false);
+        boolean[] selected = {sp_records.getBoolean(contactName, false), sp_blocks.getBoolean(contactName, false)};
+        final SharedPreferences.Editor editor_blocks = sp_blocks.edit();
+        final SharedPreferences.Editor editor_records = sp_records.edit();
+        alertDialog.setMultiChoiceItems(R.array.contacts_setting, selected, new DialogInterface.OnMultiChoiceClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which, boolean isChecked) {
+                if (isChecked) {
+                    Log.d("debug", "i'm checked");
+                    // If the user checked the item, add it to the selected items
+                    if(which == 1)
+                        editor_blocks.putBoolean(contactName, true);
+                    else
+                        editor_records.putBoolean(contactName, true);
+                }
+                else {
+                    Log.d("debug", "i'm else");
+                    if(which == 1)
+                        editor_blocks.remove(contactName);
+                    else
+                        editor_records.remove(contactName);
+                }
+            }
+        });
+        alertDialog.setPositiveButton("Done", new DialogInterface.OnClickListener()
         {
-            // show requestPermissions dialog
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.READ_CONTACTS}, 111);
-            if(ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED)
-                return true;
-            finish();
-        }
-        return true;
+            @Override
+            public void onClick(DialogInterface dialog, int which)
+            {
+                editor_blocks.apply();
+                editor_records.apply();
+                cursor = getCursor();
+                contactAdapter.changeCursor(cursor);
+            }
+        });
+        alertDialog.setNegativeButton("Close", new DialogInterface.OnClickListener()
+        {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
+            }
+        });
+        alertDialog.show();
     }
 
-    public void showCenteredToast(String msg)
-    {
-        Toast toast = Toast.makeText(this, msg, Toast.LENGTH_LONG);
-        toast.setGravity(Gravity.CENTER, 0, 0);
-        toast.show();
-    }
+
+
 }
