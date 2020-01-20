@@ -34,7 +34,6 @@
                     android:layout_weight="1"
                     android:gravity="center"
                     android:paddingTop="20dp"
-                    android:text="textview"
                     android:textSize="30sp" />
 
                 <TextView
@@ -43,8 +42,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="center"
-                    android:text="TextView"
-                    android:textSize="25dp" />
+                    android:textSize="24dp" />
 
             </LinearLayout>
 
@@ -59,7 +57,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginLeft="30dp"
-                    android:layout_marginTop="70dp"
+                    android:layout_marginTop="30dp"
                     android:layout_marginRight="30dp"
                     android:layout_marginBottom="10dp"
                     android:layout_weight="1"
@@ -80,7 +78,7 @@
                     android:layout_marginTop="20dp"
                     android:layout_marginBottom="10dp"
                     android:layout_weight="1"
-                    android:background="@android:color/holo_blue_light"
+                    android:background="@drawable/oval_button"
                     android:gravity="center"
                     android:text="Add Remark"
                     android:textColor="@android:color/white" />

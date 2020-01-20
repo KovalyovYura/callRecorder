@@ -11,23 +11,26 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:paddingBottom="20dp">
+
+        <SearchView
+            android:id="@+id/searchContactsID"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="5dp"
+            android:layout_weight="1" />
 
         <Button
             android:id="@+id/btnGoToRecordsID"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:layout_margin="5dp"
             android:layout_weight="1"
-            android:text="@string/btn_go_to_records" />
-
-        <EditText
-            android:id="@+id/edtSearchID"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:ems="10"
-            android:hint="@string/search_hint"
-            android:inputType="textPersonName" />
+            android:background="@drawable/oval_button"
+            android:gravity="center"
+            android:text="@string/btn_go_to_records"
+            android:textColor="@android:color/white" />
 
     </LinearLayout>
 
