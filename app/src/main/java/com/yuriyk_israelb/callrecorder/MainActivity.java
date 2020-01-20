@@ -91,8 +91,8 @@ public class MainActivity extends AppCompatActivity {
         try
         {
             contactsDB = openOrCreateDatabase(DATABASE_NAME, MODE_PRIVATE, null);
-            String sql = "CREATE TABLE IF NOT EXISTS records(name VARCHAR, phone_number VARCHAR, record_length VARCHAR" +
-                    ", in_out boolean, record_ref VARCHAR, _id VARCHAR primary key);";
+            String sql = "CREATE TABLE IF NOT EXISTS records(name VARCHAR, phone_number VARCHAR" +
+                    ", in_out boolean, record_ref VARCHAR, _id VARCHAR primary key, remark VARCHAR);";
             contactsDB.execSQL(sql);
         }
         catch (Exception e)

@@ -27,7 +27,7 @@ public class CallRecordReceiver extends BroadcastReceiver {
         private File audiofile;
         private boolean recordStarted = false;
         private Timer timer;
-        private String name, phoneNumber, outOrIn, recordPath, recordLength, time;
+        private String name, phoneNumber, outOrIn, recordPath, time;
         private boolean wasRinging = false;
         private static final String ACTION_IN = "android.intent.action.PHONE_STATE";
         private static final String ACTION_OUT = "android.intent.action.NEW_OUTGOING_CALL";
@@ -111,13 +111,13 @@ public class CallRecordReceiver extends BroadcastReceiver {
 
 
         private void setToDB(){
-            String sql = "INSERT INTO records(name, phone_number, record_length, in_out, record_ref, _id) " +
-                    "VALUES('" + name +"','" + phoneNumber + "','"+ recordLength +"','"+ outOrIn +"','"+ recordPath +"','"+ time +"');";
+            String sql = "INSERT INTO records(name, phone_number, in_out, record_ref, _id, remark) " +
+                    "VALUES('" + name +"','" + phoneNumber + "','" + outOrIn +"','"+ recordPath +"','"+ time +"', '');";
             MainActivity.contactsDB.execSQL(sql);
         }
 
         private void startRecord(){
-            time = new SimpleDateFormat("dd/MM/yyyy hh:mm:ss").format(new Date());
+            time = new SimpleDateFormat("dd-MM-yyyy hh-mm-ss").format(new Date());
             File sampleDir = new File(Environment.getExternalStorageDirectory(), "/CallRecordingData");
             if (!sampleDir.exists()) {
                 sampleDir.mkdirs();

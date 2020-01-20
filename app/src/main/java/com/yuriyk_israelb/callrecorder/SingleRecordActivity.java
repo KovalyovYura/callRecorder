@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
@@ -18,6 +19,9 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.TextView;
+
+import java.io.File;
+import java.io.IOException;
 
 import static com.yuriyk_israelb.callrecorder.MainActivity.contactsDB;
 
@@ -49,7 +53,7 @@ public class SingleRecordActivity extends AppCompatActivity {
         bt_start_pause = (Button) findViewById(R.id.play_pause_button);
         isPlaying = false;
 
-        String name = "", recordLength = "", dateAndTime = "", recordRef = "", remark = "";
+        String name = "", dateAndTime = "", recordRef = "", remark = "";
 
         //clicked record id(date and time) sent from RecordsActivity by intent
         id = getIntent().getStringExtra("_id");
@@ -59,7 +63,6 @@ public class SingleRecordActivity extends AppCompatActivity {
         if(c.moveToFirst()) {
             dateAndTime = c.getString(c.getColumnIndexOrThrow("_id"));
             name = c.getString(c.getColumnIndexOrThrow("name"));
-            recordLength = c.getString(c.getColumnIndexOrThrow("record_length"));
             recordRef = c.getString(c.getColumnIndexOrThrow("record_ref"));
             remark = c.getString(c.getColumnIndexOrThrow("remark"));
             if(remark.equals(""))
@@ -72,10 +75,11 @@ public class SingleRecordActivity extends AppCompatActivity {
                 add_edit_save_btn.setText("Edit Remark");
             }
         }
-        //getting the right record from raw folder
-        int resID = getResources().getIdentifier(recordRef, "raw", getPackageName());
+        Log.d("SingleRecord", recordRef);
 
-        mp = MediaPlayer.create(this, resID);
+
+        mp = MediaPlayer.create(this, Uri.fromFile(new File(recordRef)));
+
 
         mp.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
             @Override
@@ -138,17 +142,18 @@ public class SingleRecordActivity extends AppCompatActivity {
                 public void run() {
                     while(isPlaying)
                     {
-                        if(seekBar.getProgress() == mp.getDuration())//audio is done
-                        {
-                            isPlaying = false;
-                            seekBar.setProgress(0);
-                            bt_start_pause.setBackgroundResource(R.drawable.play);
-                            mp.seekTo(0);
-                            return;
-                        }
+
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
+                                if(seekBar.getProgress() == mp.getDuration())//audio is done
+                                {
+                                    isPlaying = false;
+                                    seekBar.setProgress(0);
+                                    bt_start_pause.setBackgroundResource(R.drawable.play);
+                                    mp.seekTo(0);
+                                    return;
+                                }
                                 recordPositionTv.setText(getDuration(mp.getCurrentPosition()/1000));
                                 seekBar.setProgress(mp.getCurrentPosition());
                             }
