@@ -33,16 +33,20 @@ public class ContactAdapter extends CursorAdapter {
         SharedPreferences sp_record = context.getSharedPreferences("Records", Context.MODE_PRIVATE);
 
         TextView txtName = view.findViewById(R.id.txtContactNameID);
+        TextView txtPhoneNumber = view.findViewById(R.id.txtNumberID);
         ImageView iconView = view.findViewById(R.id.imgContactImageID);
         ImageView iconRecord = view.findViewById(R.id.icCallRecordID);
         ImageView iconBlocked = view.findViewById(R.id.icCallBlockedID);
         String name = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));
+        String number = cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+        txtName.setText(name);
+        txtPhoneNumber.setText(number);
         int photoResourceId = cursor.getInt(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_FILE_ID));
         if (photoResourceId == 0)
             iconView.setImageResource(R.drawable.default_avatar);
         else
             iconView.setImageURI(ContentUris.withAppendedId(ContactsContract.DisplayPhoto.CONTENT_URI, photoResourceId));
-        txtName.setText(name);
+
 
         if (sp_record.getBoolean(name, false))
             iconRecord.setVisibility(View.VISIBLE);

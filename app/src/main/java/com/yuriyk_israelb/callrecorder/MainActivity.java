@@ -3,9 +3,15 @@ package com.yuriyk_israelb.callrecorder;
 import androidx.appcompat.app.AppCompatActivity;
 
 
+import android.app.admin.DevicePolicyManager;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.AdapterView;
@@ -13,6 +19,7 @@ import android.widget.Button;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import android.Manifest;
 import android.app.AlertDialog;
@@ -27,7 +34,6 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -45,19 +51,42 @@ public class MainActivity extends AppCompatActivity {
     private Button btn;
     private SharedPreferences sp_records;
     private SharedPreferences sp_blocks;
+    private boolean isStart = true;
+    private static final int REQUEST_CODE = 0;
+    private DevicePolicyManager mDPM;
+    private ComponentName mAdminName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        isStart = false;
+
+        // open SP for saving record and block settings per contact
+        sp_records = getSharedPreferences("Records", MODE_PRIVATE);
+        sp_blocks = getSharedPreferences("Blocks", MODE_PRIVATE);
 
         lvContactsList = findViewById(R.id.lvContactsListID);
         edtSearch = findViewById(R.id.edtSearchID);
         btn = findViewById(R.id.btnGoToRecordsID);
-        sp_records = getSharedPreferences("Records", MODE_PRIVATE);
-        sp_blocks = getSharedPreferences("Blocks", MODE_PRIVATE);
 
-
+        try {
+            // Initiate DevicePolicyManager.
+            mDPM = (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
+            mAdminName = new ComponentName(this, DeviceAdminDemo.class);
+            if (!mDPM.isAdminActive(mAdminName)) {
+                Log.d("debug", "inside if");
+                Intent intent = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
+                intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, mAdminName);
+                intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Click on Activate button to secure your application.");
+                startActivityForResult(intent, REQUEST_CODE);
+            } else {
+                Log.d("debug", "inside else");
+                startService(new Intent(this, CallRecordService.class));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         // Open Database or create if isn't exist and create contact table
         try
         {
@@ -71,17 +100,16 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "DataBase ERROR", Toast.LENGTH_LONG).show();
         }
 
-        String sql = "REPLACE INTO records(name, phone_number, record_length, in_out, record_ref, _id) " +
-                "VALUES('yura', '0543980555', '12:51', 1, 'ahoti', '12.12.12 22:22')," +
-                "('israel', '0543980555', '12:51', 1, 'all_or_nothing', '16.12.12 22:22')," +
-                "('sasha', '0543980555', '12:51', 1, '" +
-                "', '15.12.12 22:22')," +
-                "('shmuel', '0543980555', '12:51', 1, 'blublu', '14.12.12 22:22')," +
-                "('eli', '0543980555', '12:51', 1, 'blublu', '13.12.12 22:22');";
+//        String sql = "REPLACE INTO records(name, phone_number, record_length, in_out, record_ref, _id) " +
+//                "VALUES('yura', '0543980555', '12:51', 1, 'ahoti', '12.12.12 22:22')," +
+//                "('israel', '0543980555', '12:51', 1, 'all_or_nothing', '16.12.12 22:22')," +
+//                "('sasha', '0543980555', '12:51', 1, 'sound_got', '15.12.12 22:22')," +
+//                "('shmuel', '0543980555', '12:51', 1, 'blublu', '14.12.12 22:22')," +
+//                "('eli', '0543980555', '12:51', 1, 'blublu', '13.12.12 22:22');";
+//
+//        contactsDB.execSQL(sql);
 
-        contactsDB.execSQL(sql);
-
-
+        //TODO: ask for all premissions
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.READ_CONTACTS)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -100,28 +128,44 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                     LinearLayout linearLayoutParent = (LinearLayout) view;
-                    TextView txtName = (TextView) linearLayoutParent.getChildAt(1);
+                    LinearLayout nameAndPhone = (LinearLayout) linearLayoutParent.getChildAt(1);
+                    TextView txtName = (TextView)nameAndPhone.getChildAt(0);
                     String contactName = txtName.getText().toString();
                     showContactSettingDialog(contactName);
                 }
             });
 
-            // search contacts if when enter was pressed
-            edtSearch.setOnKeyListener(new View.OnKeyListener() {
+            edtSearch.addTextChangedListener(new TextWatcher() {
+
                 @Override
-                public boolean onKey(View v, int keyCode, KeyEvent event) {
-                    if(event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_ENTER){
-                        cursor = getSearchCursor(edtSearch.getText().toString());
-                        contactAdapter.changeCursor(cursor);
-                        return true;
-                    }
-                    return false;
+                public void afterTextChanged(Editable s) {
+                    cursor = getSearchCursor(s.toString());
+                    contactAdapter.changeCursor(cursor);
+                }
+
+                @Override
+                public void beforeTextChanged(CharSequence s, int start,
+                                              int count, int after) {
+                }
+
+                @Override
+                public void onTextChanged(CharSequence s, int start,
+                                          int before, int count) {
                 }
             });
         }
 
-
         btn.setOnClickListener(new Listener());
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (REQUEST_CODE == requestCode) {
+            Intent intent = new Intent(MainActivity.this, CallRecordService.class);
+            startService(intent);
+        }
     }
 
     public class Listener implements View.OnClickListener
@@ -146,7 +190,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public Cursor getSearchCursor(String query){
-        Log.d("debug", "i'm in getSearch");
         ContentResolver resolver = getContentResolver();
         Uri contactsTableUri = ContactsContract.CommonDataKinds.Phone.CONTENT_URI;
         String selection = ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ?";
@@ -155,26 +198,46 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    @Override
+    protected void onPause() {
+        Log.d("debug", "i'm in onPause");
+        super.onPause();
+    }
+
+    @Override
+    protected void onStop() {
+        Log.d("debug", "i'm in onStop");
+        super.onStop();
+    }
 
     @Override
     protected void onResume() {
         super.onResume();
-//        cursor = getCursor();
-//        contactAdapter.changeCursor(cursor);
+        if(!isStart){
+            cursor = getCursor();
+            contactAdapter.changeCursor(cursor);
+        }
     }
 
+    @Override
+    protected void onStart() {
+        Log.d("debug", "i'm in onStart");
+        super.onStart();
+    }
 
-
-
-
-
-
+    @Override
+    protected void onDestroy() {
+        Log.d("debug", "i'm in onDestroy");
+        stopService(new Intent(this, CallRecordService.class));
+        super.onDestroy();
+    }
 
     public boolean onCreateOptionsMenu(Menu menu)
     {
         super.onCreateOptionsMenu(menu);
         MenuItem menuAbout = menu.add("About");
         MenuItem menuExit = menu.add("Exit");
+        MenuItem menuUnknownRecord = menu.add("Unknown contacts");
 
         menuAbout.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener()
         {
@@ -195,6 +258,15 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             }
         });
+
+        menuUnknownRecord.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                unknownRecord();
+                return true;
+            }
+        });
+
         return true;
     }
 
@@ -202,15 +274,14 @@ public class MainActivity extends AppCompatActivity {
     {
         AlertDialog.Builder alertDialog = new AlertDialog.Builder(this);
 //        alertDialog.setIcon(R.drawable.document);
-        alertDialog.setTitle("About Puzzle 15");
-        alertDialog.setMessage("This game implements the Game Of Fifteen\n\nBy YURIY KOVALYOV & ISRAEL BEN MENACHEM (c)");
+        alertDialog.setTitle("CallRecorder");
+        alertDialog.setMessage("This application record phone calls\n\nBy YURIY KOVALYOV & ISRAEL BEN MENACHEM (c)");
         alertDialog.show();
     }
 
     private void showExitDialog()
     {
         AlertDialog.Builder alertDialog = new AlertDialog.Builder(this);
-//        alertDialog.setIcon(R.drawable.document);
         alertDialog.setTitle("Exit App");
         alertDialog.setMessage("Do you really want to exit?");
         alertDialog.setCancelable(false);
@@ -230,10 +301,39 @@ public class MainActivity extends AppCompatActivity {
         alertDialog.show();
     }
 
+    private void unknownRecord()
+    {
+        AlertDialog.Builder alertDialog = new AlertDialog.Builder(this);
+        alertDialog.setTitle("Enable/Disable recording of unknown contacts");
+        alertDialog.setMessage("Do you want to record calls from unknown contacts?");
+        alertDialog.setCancelable(false);
+        final SharedPreferences.Editor editor = sp_records.edit();
+        alertDialog.setPositiveButton("Enable", new DialogInterface.OnClickListener()
+        {
+            @Override
+            public void onClick(DialogInterface dialog, int which)
+            {
+                  editor.putBoolean("Unknown", true);
+                  editor.apply();
+            }
+        });
+        alertDialog.setNegativeButton("Disable", new DialogInterface.OnClickListener()
+        {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                editor.remove("Unknown");
+                editor.apply();
+            }
+        });
+        alertDialog.show();
+    }
+
+
 
     private void showContactSettingDialog(final String contactName){
         AlertDialog.Builder alertDialog = new AlertDialog.Builder(this);
         alertDialog.setTitle("Contact Settings");
+        alertDialog.setIcon(R.drawable.settings_icon);
         alertDialog.setCancelable(false);
         boolean[] selected = {sp_records.getBoolean(contactName, false), sp_blocks.getBoolean(contactName, false)};
         final SharedPreferences.Editor editor_blocks = sp_blocks.edit();
@@ -250,7 +350,6 @@ public class MainActivity extends AppCompatActivity {
                         editor_records.putBoolean(contactName, true);
                 }
                 else {
-                    Log.d("debug", "i'm else");
                     if(which == 1)
                         editor_blocks.remove(contactName);
                     else
@@ -258,7 +357,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-        alertDialog.setPositiveButton("Done", new DialogInterface.OnClickListener()
+        alertDialog.setPositiveButton("Save", new DialogInterface.OnClickListener()
         {
             @Override
             public void onClick(DialogInterface dialog, int which)

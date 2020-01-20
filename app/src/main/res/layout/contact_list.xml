@@ -22,22 +22,37 @@
         app:civ_border_color="@android:color/white"
         app:civ_border_width="2dp" />
 
-    <TextView
-        android:id="@+id/txtContactNameID"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
+        android:layout_height="match_parent"
+        android:layout_margin="5dp"
         android:layout_weight="1"
-        android:gravity="center"
-        android:textSize="18sp"
-        android:textStyle="bold|italic" />
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/txtContactNameID"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_weight="1"
+            android:gravity="top"
+            android:textSize="14sp"
+            android:textStyle="bold|italic" />
+
+        <TextView
+            android:id="@+id/txtNumberID"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="12sp" />
+    </LinearLayout>
 
     <ImageView
         android:id="@+id/icCallRecordID"
         android:layout_width="wrap_content"
         android:layout_height="30dp"
         android:layout_gravity="center"
-        android:layout_weight="1"
+        android:layout_weight="2"
         app:srcCompat="@drawable/microphone" />
 
     <ImageView
@@ -45,6 +60,6 @@
         android:layout_width="match_parent"
         android:layout_height="30dp"
         android:layout_gravity="center"
-        android:layout_weight="1"
+        android:layout_weight="2"
         app:srcCompat="@drawable/block" />
 </LinearLayout>
