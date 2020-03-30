@@ -46,16 +46,16 @@ public class CallRecordReceiver extends BroadcastReceiver {
         public void onReceive(Context context, Intent intent) {
             // get Shared Preference for check if enable to record
             record = context.getSharedPreferences("Records", Context.MODE_PRIVATE);
-
             if (intent.getAction().equals(ACTION_OUT)) {
                 if ((bundle = intent.getExtras()) != null) {
                     inOutCall = true;
                     phoneNumber = intent.getStringExtra(Intent.EXTRA_PHONE_NUMBER);
                     outOrIn = "0";
                     name = getName(phoneNumber, context);
-//                    Log.d("receiver", "OUT CALL "+ phoneNumber);
-                    if(record.getBoolean(name, false))
+
+                    if(record.getBoolean(name, false)) {
                         startRecord();
+                    }
                 }
             }
             else if (intent.getAction().equals(ACTION_IN)) {
@@ -66,41 +66,37 @@ public class CallRecordReceiver extends BroadcastReceiver {
                         phoneNumber = bundle.getString(TelephonyManager.EXTRA_INCOMING_NUMBER);
                         name = getName(phoneNumber, context);
                         wasRinging = true;
-//                        Log.d("receiver", "IN :" + phoneNumber);
                     }
                     else if (state.equals(TelephonyManager.EXTRA_STATE_OFFHOOK)) {
                         if (wasRinging && !recordStarted) {
                             outOrIn = "1";
-//                            Log.d("receiver", "ANSWERED");
                             if(record.getBoolean(name, false))
                                 startRecord();
                         }
                     }
                     else if (state.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
                         wasRinging = false;
-//                        Log.d("receiver", "i'm in IDLE");
                         if(inOutCall && recordStarted){
-//                            Log.d("receiver", "OUT END");
                             recorder.stop();
                             recordPath = audiofile.getAbsolutePath();
                             inOutCall = false;
                             recordStarted = false;
                             setToDB();
-                            showNotification("Call Record Saved",
-                                    "Call Record with "+ name +" at time "+time+"\n" +
-                                            "saved successfully\n" +
-                                            "clicked to open record",context, name, time);
+                            showNotification("Outgoing Call Record Saved",
+                                    "With "+ name +" at time "+time+"\n" +
+                                            "saved successfully, " +
+                                            "click to open record",context, name, time);
                         }
-                        if (recordStarted) {
+                        if (!inOutCall && recordStarted) {
                             Log.d("receiver", "IN END");
                             recorder.stop();
                             recordPath = audiofile.getAbsolutePath();
                             recordStarted = false;
                             setToDB();
-                            showNotification("Call Record Saved",
-                                    "Call Record with "+ name +" at time "+time+"\n" +
-                                            "saved successfully\n" +
-                                            "clicked to open record",context, name, time);
+                            showNotification("Incoming Call Record Saved",
+                                    "With "+ name +" at time "+time+"\n" +
+                                            "saved successfully, " +
+                                            "click to open record",context, name, time);
                         }
                     }
                 }
@@ -161,9 +157,9 @@ public class CallRecordReceiver extends BroadcastReceiver {
                                  Context context, String name, String time)
     {
         Log.d("receiver", "in showNotification");
-        Intent intent = new Intent(context, SingleRecordActivity.class);
-        intent.putExtra("name", name);
-        intent.putExtra("_id", time);
+        Intent intent = new Intent(context, RecordsActivity.class);
+//        intent.putExtra("name", name);
+//        intent.putExtra("_id", time);
 
         PendingIntent pendingIntent = PendingIntent.getActivity(context,0,intent,0);
 

@@ -1,22 +1,20 @@
 package com.yuriyk_israelb.finalProject;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 
-import android.app.admin.DevicePolicyManager;
-import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
-
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-
 import android.Manifest;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
@@ -45,17 +43,14 @@ public class MainActivity extends AppCompatActivity {
     private ContactAdapter contactAdapter;
     private Button btn;
     private SharedPreferences sp_records;
-    private static final int REQUEST_CODE = 0;
-    private DevicePolicyManager mDPM;
-    private ComponentName mAdminName;
     private boolean isStart = true;
 
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        isStart = false;
 
         // open SP for saving record and block settings per contact
         sp_records = getSharedPreferences("Records", MODE_PRIVATE);
@@ -63,80 +58,51 @@ public class MainActivity extends AppCompatActivity {
         lvContactsList = findViewById(R.id.lvContactsListID);
         searchView = findViewById(R.id.searchContactsID);
         btn = findViewById(R.id.btnGoToRecordsID);
+
+        // Open Database or create if isn't exist and create contact table
         try {
-            // Initiate DevicePolicyManager.
-            mDPM = (DevicePolicyManager) getSystemService(Context.DEVICE_POLICY_SERVICE);
-            mAdminName = new ComponentName(this, DeviceAdminDemo.class);
-
-            if (!mDPM.isAdminActive(mAdminName)) {
-                Intent intent = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
-                intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, mAdminName);
-                intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Click on Activate button to secure your application.");
-                startActivityForResult(intent, REQUEST_CODE);
-            } else {
-                Intent intent = new Intent(MainActivity.this, CallRecordService.class);
-                startService(intent);
-            }
+            contactsDB = openOrCreateDatabase(DATABASE_NAME, MODE_PRIVATE, null);
+            String sql = "CREATE TABLE IF NOT EXISTS records(name VARCHAR, phone_number VARCHAR" +
+                    ", in_out boolean, record_ref VARCHAR, _id VARCHAR primary key, remark VARCHAR);";
+            contactsDB.execSQL(sql);
         } catch (Exception e) {
-            e.printStackTrace();
+            Toast.makeText(this, "DataBase ERROR", Toast.LENGTH_LONG).show();
         }
-        if(!checkAllPermissons())
+
+        while (!checkAllPermissons()) {
             requestAllPermissions();
-        else {
-            startService(new Intent(this, CallRecordService.class));
-
-            // Open Database or create if isn't exist and create contact table
-            try
-            {
-                contactsDB = openOrCreateDatabase(DATABASE_NAME, MODE_PRIVATE, null);
-                String sql = "CREATE TABLE IF NOT EXISTS records(name VARCHAR, phone_number VARCHAR" +
-                        ", in_out boolean, record_ref VARCHAR, _id VARCHAR primary key, remark VARCHAR);";
-                contactsDB.execSQL(sql);
-            }
-            catch (Exception e)
-            {
-                Toast.makeText(this, "DataBase ERROR", Toast.LENGTH_LONG).show();
-            }
-            cursor = getCursor();
-            contactAdapter = new ContactAdapter(this, cursor);
-            lvContactsList.setAdapter(contactAdapter);
-            btn.setOnClickListener(new Listener());
-
-            lvContactsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                    LinearLayout linearLayoutParent = (LinearLayout) view;
-                    LinearLayout nameAndPhone = (LinearLayout) linearLayoutParent.getChildAt(1);
-                    TextView txtName = (TextView) nameAndPhone.getChildAt(0);
-                    String contactName = txtName.getText().toString();
-                    showContactSettingDialog(contactName);
-                }
-            });
-
-            searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-                @Override
-                public boolean onQueryTextSubmit(String query) {
-                    return false;
-                }
-
-                @Override
-                public boolean onQueryTextChange(String s) {
-                    cursor = getSearchCursor(s);
-                    contactAdapter.changeCursor(cursor);
-                    return true;
-                }
-            });
         }
-    }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
+        cursor = getCursor();
+        contactAdapter = new ContactAdapter(this, cursor);
+        lvContactsList.setAdapter(contactAdapter);
+        btn.setOnClickListener(new Listener());
 
-        if (REQUEST_CODE == requestCode) {
-            Intent intent = new Intent(MainActivity.this, CallRecordService.class);
-            startService(intent);
-        }
+        lvContactsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                        @Override
+                        public void onItemClick(AdapterView<?> parent, View view, int position, long id) { LinearLayout linearLayoutParent = (LinearLayout) view;
+                        LinearLayout nameAndPhone = (LinearLayout) linearLayoutParent.getChildAt(1);
+                        TextView txtName = (TextView) nameAndPhone.getChildAt(0);
+                        String contactName = txtName.getText().toString();
+                        showContactSettingDialog(contactName);
+                        }
+                    });
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String s) {
+                cursor = getSearchCursor(s);
+                contactAdapter.changeCursor(cursor);
+                return true;
+            }
+        });
+        startForegroundService(new Intent(this, CallRecordService.class));
+
     }
 
 
@@ -177,6 +143,7 @@ public class MainActivity extends AppCompatActivity {
             cursor = getCursor();
             contactAdapter.changeCursor(cursor);
         }
+        isStart = false;
     }
 
 
@@ -312,21 +279,7 @@ public class MainActivity extends AppCompatActivity {
         alertDialog.setTitle("Enable/Disable recording of unknown contacts");
         alertDialog.setCancelable(false);
         final SharedPreferences.Editor editor = sp_records.edit();
-        if(!sp_records.getBoolean("Unknown", false)) {
-            alertDialog.setPositiveButton("Enable", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {
-                    editor.putBoolean("Unknown", true);
-                    editor.apply();
-                }
-            });
-            str = "Enable";
-            alertDialog.setNegativeButton("Close", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int which) {}
-            });
-        }
-        else {
+        if (sp_records.getBoolean("Unknown", false)) {
             alertDialog.setPositiveButton("Disable", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) {
@@ -338,6 +291,19 @@ public class MainActivity extends AppCompatActivity {
             alertDialog.setNegativeButton("Close", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialog, int which) { }
+            });
+        } else {
+            alertDialog.setPositiveButton("Enable", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    editor.putBoolean("Unknown", true);
+                    editor.apply();
+                }
+            });
+            str = "Enable";
+            alertDialog.setNegativeButton("Close", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {}
             });
         }
         alertDialog.setMessage("Do you want " + str + " record calls from unknown contacts?");

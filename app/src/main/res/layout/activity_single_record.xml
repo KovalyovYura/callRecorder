@@ -72,10 +72,9 @@
 
                 <Button
                     android:id="@+id/editsave"
-                    android:layout_width="150dp"
+                    android:layout_width="130dp"
                     android:layout_height="1dp"
                     android:layout_gravity="center"
-                    android:layout_marginTop="20dp"
                     android:layout_marginBottom="10dp"
                     android:layout_weight="1"
                     android:background="@drawable/oval_button"
